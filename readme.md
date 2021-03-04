@@ -49,7 +49,7 @@ deploy kubeflow
 
 ```shell
 export manifests_dir=/home/rspazzol/git/kubeflow-manifests #change to something else if need be
-git -C $(dirname "$manifests_dir") clone https://github.com/raffaelespazzoli/manifests
+git -C $(dirname "$manifests_dir") clone https://github.com/raffaelespazzoli/manifests -b ocp
 export KF_DIR=$(pwd)/kfctl-run
 
 ## loop from here
