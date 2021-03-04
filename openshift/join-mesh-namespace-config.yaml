@@ -1,0 +1,67 @@
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: NamespaceConfig
+metadata:
+  name: kubeflow-namespace
+spec:
+  labelSelector:
+    matchLabels:
+      control-plane: kubeflow  
+  templates:
+  - objectTemplate: |
+      apiVersion: maistra.io/v1
+      kind: ServiceMeshMember
+      metadata:
+        name: default
+        namespace: {{ .Name }}
+      spec:
+        controlPlaneRef:
+          namespace: ${sm_cp_namespace}
+          name: ${sm_cp_name}
+  - objectTemplate: | 
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: default-editor-nonroot
+        namespace: {{ .Name }}
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: system:openshift:scc:nonroot
+      subjects:
+      - kind: ServiceAccount
+        name: default-editor
+  - objectTemplate: | 
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: default-edit
+        namespace: {{ .Name }}
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: edit
+      subjects:
+      - kind: ServiceAccount
+        name: default        
+  - objectTemplate: | 
+      apiVersion: redhatcop.redhat.io/v1alpha1
+      kind: ResourceLocker
+      metadata:
+        name: sts-annotation
+        namespace: {{ .Name }}
+      spec:
+        serviceAccountRef:
+          name: default
+        patches:
+        - targetObjectRef:
+            apiVersion: v1
+            kind: ServiceAccount
+            name: {{ .Name }}
+            namespace: default-editor
+          patchTemplate: |
+            metadata:
+              annotations:
+                 eks.amazonaws.com/audience: "sts.amazonaws.com"
+                 eks.amazonaws.com/token-expiration: "86400"
+          patchType: application/strategic-merge-patch+json
+          id: default-editor-aws-access

@@ -1,0 +1,142 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: ${sm_cp_name}
+spec:
+  version: v2.0
+  tracing:
+    type: Jaeger
+    sampling: 10000
+  addons:
+    jaeger:
+      name: jaeger
+      install:
+        storage:
+          type: Memory
+    kiali:
+      enabled: true
+      name: kiali
+    grafana:
+      enabled: true
+  gateways:
+    ingress:
+      ingress: true
+      volumes:
+        - volume:
+            secret: 
+              secretName: proxy-tls
+          volumeMount:
+            name: proxy-tls
+            mountPath: /certs
+        - volume:
+            configMap: 
+              name: trusted-ca-bundle 
+          volumeMount:
+            name: trusted-ca-bundle
+            mountPath: /ca-bundle            
+      service:
+        metadata:
+          annotations:
+            service.alpha.openshift.io/serving-cert-secret-name: proxy-tls
+        ports:    
+          - name: http2
+            protocol: TCP
+            port: 80
+            targetPort: 8080
+          # - name: https
+          #   protocol: TCP
+          #   port: 443
+          #   targetPort: 443
+          - name: oauth
+            protocol: TCP
+            port: 9443
+            targetPort: 9443            
+          # - name: tls
+          #   protocol: TCP
+          #   port: 15443
+          #   targetPort: 15443
+  techPreview:
+    gateways:
+      istio-ingressgateway:
+        additionalContainers:
+          - name: oauth2-proxy
+            env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            args:
+              - '-provider=openshift'
+              - '-pass-basic-auth=false'
+              - '-https-address=:9443'
+              - '-http-address='
+              - '-email-domain=*'
+              - '-upstream=http://$(POD_IP):8080'
+              - '-openshift-sar={"namespace":"${sm_cp_namespace}","resource":"pods","verb":"get"}'
+              - '-openshift-delegate-urls={"/": {"namespace":"${sm_cp_namespace}","resource":"pods","verb":"get"}}'
+              - '-tls-cert=/certs/tls.crt'
+              - '-tls-key=/certs/tls.key'
+              - '-client-id=kubeflow-istio'
+              - '-client-secret=SECRET'
+              - '-cookie-secret=SECRET'
+              - '-openshift-ca=/ca-bundle/ca-bundle.crt'
+              - '-openshift-ca=/ca-bundle/service-ca.crt'
+              - '-openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'               
+            image: 'quay.io/openshift/origin-oauth-proxy:4.6'
+            imagePullPolicy: Always
+            ports:
+              - containerPort: 8081
+                protocol: TCP
+                name: oauth-http
+            volumeMounts:
+              - name: proxy-tls
+                mountPath: /certs
+              - name: trusted-ca-bundle
+                mountPath: /ca-bundle                
+---
+kind: OAuthClient
+apiVersion: oauth.openshift.io/v1
+metadata:
+ name: kubeflow-istio 
+secret: SECRET 
+redirectURIs:
+ - "https://kubeflow.apps.${base_domain}" 
+grantMethod: auto 
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: trusted-ca-bundle
+  annotations:
+    service.alpha.openshift.io/inject-cabundle: 'true'
+  labels:
+    config.openshift.io/inject-trusted-cabundle: "true"    
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: secure-kubeflow
+spec:
+  host: kubeflow.apps.${base_domain}
+  port:
+    targetPort: 9443
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: reencrypt
+  to:
+    kind: Service
+    name: istio-ingressgateway
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: istio-ingress-oauth
+subjects:
+- kind: ServiceAccount
+  namespace: ${sm_cp_namespace}
+  name: istio-ingressgateway-service-account
+roleRef:
+  kind: ClusterRole
+  name: grafana
+  apiGroup: rbac.authorization.k8s.io          

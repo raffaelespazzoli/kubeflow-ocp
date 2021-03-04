@@ -1,0 +1,133 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    build: tf-notebook-image
+  name: tf-notebook-image  
+spec:
+  lookupPolicy:
+    local: false
+  tags:
+  - annotations: null
+    from:
+      kind: DockerImage
+      name: tf-notebook-image:latest
+    generation: 3
+    importPolicy: {}
+    name: latest
+    referencePolicy:
+      type: Source
+  - annotations:
+      openshift.io/imported-from: quay.io/kubeflow/tf-notebook-image:v1.0.0
+    from:
+      kind: DockerImage
+      name: quay.io/kubeflow/tf-notebook-image:v1.0.0
+    generation: 3
+    importPolicy: {}
+    name: v1.0.0
+    referencePolicy:
+      type: Source
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  labels:
+    build: tf-notebook-image
+  name: tf-notebook-image
+spec:
+  failedBuildsHistoryLimit: 5
+  output:
+    to:
+      kind: ImageStreamTag
+      name: tf-notebook-image:latest
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
+  source:
+    dockerfile: |-
+      FROM quay.io/kubeflow/tf-notebook-image:v1.0.0
+      USER 1000
+    type: Dockerfile
+  strategy:
+    dockerStrategy:
+      from:
+        kind: ImageStreamTag
+        name: tf-notebook-image:v1.0.0
+    type: Docker
+  successfulBuildsHistoryLimit: 5
+  triggers:
+  - github:
+      secret: Lio7_JmktKXkiqWIc98_
+    type: GitHub
+  - generic:
+      secret: jFlD7Jdk1Lu71UcEajJd
+    type: Generic
+  - type: ConfigChange
+  - type: ImageChange
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    build: elyra
+  name: elyra  
+spec:
+  lookupPolicy:
+    local: false
+  tags:
+  - annotations: null
+    from:
+      kind: DockerImage
+      name: elyra:2.0.1
+    generation: 3
+    importPolicy: {}
+    name: latest
+    referencePolicy:
+      type: Source
+  - annotations:
+      openshift.io/imported-from: quay.io/elyra/elyra:2.0.1
+    from:
+      kind: DockerImage
+      name: quay.io/elyra/elyra:2.0.1
+    generation: 3
+    importPolicy: {}
+    name: v1.0.0
+    referencePolicy:
+      type: Source
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  labels:
+    build: tf-notebook-image
+  name: tf-notebook-image
+spec:
+  failedBuildsHistoryLimit: 5
+  output:
+    to:
+      kind: ImageStreamTag
+      name: tf-notebook-image:latest
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
+  source:
+    dockerfile: |-
+      FROM quay.io/kubeflow/tf-notebook-image:v1.0.0
+      USER 1000
+    type: Dockerfile
+  strategy:
+    dockerStrategy:
+      from:
+        kind: ImageStreamTag
+        name: tf-notebook-image:v1.0.0
+    type: Docker
+  successfulBuildsHistoryLimit: 5
+  triggers:
+  - github:
+      secret: Lio7_JmktKXkiqWIc98_
+    type: GitHub
+  - generic:
+      secret: jFlD7Jdk1Lu71UcEajJd
+    type: Generic
+  - type: ConfigChange
+  - type: ImageChange  
