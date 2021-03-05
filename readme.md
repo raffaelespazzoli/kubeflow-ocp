@@ -27,17 +27,13 @@ export base_domain=$(oc get dns cluster -o jsonpath='{.spec.baseDomain}')
 envsubst < ./openshift/sm_cp_patch.yaml | oc apply -f - -n ${sm_cp_namespace}
 ```
 
-Prepare namespace automatic joining to the mesh
-
-```shell
-envsubst < ./openshift/join-mesh-namespace-config.yaml | oc apply -f -
-```
-
 Prepare the kubeflow namespace
 
 ```shell
 oc new-project kubeflow
-oc label namespace kubeflow  control-plane=kubeflow katib-metricscollector-injection=enabled
+oc label namespace kubeflow  control-plane=kubeflow katib-metricscollector-injection=enabled sidecar.istio.io/inject=true
+envsubst < ./openshift/kubeflow-sm-member.yaml | oc apply -f - -n kubeflow
+oc apply -f ./openshift/allow-apiserver-webhooks.yaml -n kubeflow
 oc adm policy add-scc-to-user anyuid -z application-controller-service-account -n kubeflow
 oc adm policy add-scc-to-user anyuid -z default -n kubeflow
 oc adm policy add-scc-to-user anyuid -z seldon-manager -n kubeflow
@@ -65,10 +61,13 @@ cd ..
 ## to here
 ```
 
-Configure automatic profile creation:
+Configure automatic profile creation, and profile namespace configuration:
 
 ```shell
+export sm_cp_namespace=istio-system #change based on your settings
+export sm_cp_name=basic #change
 oc apply -f ./openshift/kubeflow-profile-creation.yaml
+envsubst < ./openshift/kubeflow-profile-namespace-config.yaml | oc apply -f -
 ```
 
 remove kubeflow

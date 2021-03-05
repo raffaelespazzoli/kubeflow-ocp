@@ -5,7 +5,7 @@ metadata:
 spec:
   labelSelector:
     matchLabels:
-      control-plane: kubeflow  
+      app.kubernetes.io/part-of: kubeflow-profile  
   templates:
   - objectTemplate: |
       apiVersion: maistra.io/v1
@@ -65,3 +65,15 @@ spec:
                  eks.amazonaws.com/token-expiration: "86400"
           patchType: application/strategic-merge-patch+json
           id: default-editor-aws-access
+  - objectTemplate: |          
+      apiVersion: v1
+      kind: LimitRange
+      metadata:
+        name: default-resources
+        namespace: {{ .Name }}
+      spec:
+        limits:
+        - defaultRequest:
+            cpu: 0.2
+            memory: 100Mi
+          type: Container          

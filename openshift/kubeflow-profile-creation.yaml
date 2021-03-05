@@ -1,7 +1,7 @@
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: UserConfig
 metadata:
-  name: test-user-config
+  name: kubeflow-user
 spec:
   provider: my_htpasswd_provider
   #name: {{ index (lookup "user.openshift.io/v1" "Identity" "" (index .Identities 0)).Extra "email" }}
@@ -22,3 +22,17 @@ spec:
             "requests.nvidia.com/gpu": "1"
             persistentvolumeclaims: "10"
             requests.storage: "20Gi"
+  - objectTemplate: | 
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: kubeflow-editor
+        namespace: {{ .Name }}
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: kubeflow-edit
+      subjects:
+      - kind: User
+        apiGroup: rbac.authorization.k8s.io
+        name: {{ .Name }}            
