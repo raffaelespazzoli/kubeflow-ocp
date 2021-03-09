@@ -1,12 +1,18 @@
 # Kubeflow for OpenShift
 
-This guides helps you set up kubeflow in an existing environment.
-We assume that Red Hat ServiceMesh, cert-manager and Red Hat Serverless are already installed.
+This guides helps you set up Kubeflow in an existing environment.
+We assume that that teh following operators are installed:
+
+* Red Hat ServiceMesh
+* cert-manager
+* Red Hat Serverless (not tested yet).
+* namespace-configuration-operator
+* resource-locker-operator
+
 We assume that there is a service mesh control plane fully dedicated to the kubeflow workloads.
-We assume that namespace-configuration-operator is deployed
-We assume that resource-locker-operator is deployed.
+
 We set up sso between kubeflow and OpenShift.
-We assume that when an OCP User is created the corresponding kubeflow profile is also created
+When an OCP User is created the corresponding kubeflow profile is also created.
 
 Prepare notebook image compatible with OCP security
 
@@ -31,7 +37,7 @@ Prepare the kubeflow namespace
 
 ```shell
 oc new-project kubeflow
-oc label namespace kubeflow  control-plane=kubeflow katib-metricscollector-injection=enabled sidecar.istio.io/inject=true
+oc label namespace kubeflow  control-plane=kubeflow katib-metricscollector-injection=enabled istio-injection=enabled
 envsubst < ./openshift/kubeflow-sm-member.yaml | oc apply -f - -n kubeflow
 oc apply -f ./openshift/allow-apiserver-webhooks.yaml -n kubeflow
 oc adm policy add-scc-to-user anyuid -z application-controller-service-account -n kubeflow

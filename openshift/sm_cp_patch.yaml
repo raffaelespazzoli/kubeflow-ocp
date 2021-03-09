@@ -4,6 +4,16 @@ metadata:
   name: ${sm_cp_name}
 spec:
   version: v2.0
+  proxy:
+    injection:
+      autoInject: true
+      neverInjectSelector:
+        - matchExpressions:
+          - key: openshift.io/build.name
+            operator: Exists
+        - matchExpressions:
+          - key: openshift.io/deployer-pod-for.name
+            operator: Exists    
   tracing:
     type: Jaeger
     sampling: 10000

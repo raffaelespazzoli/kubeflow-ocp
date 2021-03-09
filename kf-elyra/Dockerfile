@@ -1,4 +1,4 @@
-
+FROM elyra/elyra:2.0.1
 ENV NB_PREFIX /
 USER root
 COPY fix-permissions-ocp /usr/local/bin/fix-permissions-ocp
