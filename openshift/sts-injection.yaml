@@ -1,0 +1,16 @@
+apiVersion: mutations.gatekeeper.sh/v1alpha1
+kind: AssignMetadata
+metadata:
+  name: sts-annotation-injection
+spec:
+  match:
+    scope: Namespaced
+    kinds:
+      - apiGroups: 
+        - ''
+        kinds: 
+        - ServiceAccount                                    
+  location: "metadata.annotations.'eks.amazonaws.com/audience'"
+  parameters:
+    assign:
+      value: "sts.amazonaws.com"

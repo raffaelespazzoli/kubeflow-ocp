@@ -1,0 +1,13 @@
+apiVersion: machinelearning.seldon.io/v1
+kind: SeldonDeployment
+metadata:
+  name: flowers-sample
+spec:
+  name: flowers-sample
+  predictors:
+  - graph:
+      implementation: TENSORFLOW_SERVER
+      modelUri: s3://raffa-ai-models/flowers
+      name: flower-classifier
+    name: default-predictor
+    replicas: 1
