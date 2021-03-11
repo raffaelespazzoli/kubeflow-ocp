@@ -56,8 +56,8 @@ spec:
         - targetObjectRef:
             apiVersion: v1
             kind: ServiceAccount
-            name: {{ .Name }}
-            namespace: default-editor
+            name: default-editor
+            namespace: {{ .Name }}
           patchTemplate: |
             metadata:
               annotations:
@@ -76,4 +76,19 @@ spec:
         - defaultRequest:
             cpu: 0.2
             memory: 100Mi
-          type: Container          
+          type: Container   
+  - objectTemplate: |
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: allow-from-serving-system-namespace
+        namespace: {{ .Name }}
+      spec:
+        ingress:
+        - from:
+          - namespaceSelector:
+              matchLabels:
+                serving.knative.openshift.io/system-namespace: "true"
+        podSelector: {}
+        policyTypes:
+        - Ingress                   

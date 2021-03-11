@@ -52,11 +52,11 @@ spec:
   #       name: manifests
   #       path: knative/installs/generic
   #   name: knative
-  # - kustomizeConfig:
-  #     repoRef:
-  #       name: manifests
-  #       path: kfserving/installs/generic
-  #   name: kfserving
+  - kustomizeConfig:
+      repoRef:
+        name: manifests
+        path: kfserving/installs/generic
+    name: kfserving
   repos:
   - name: manifests
     uri: ${manifests_dir}

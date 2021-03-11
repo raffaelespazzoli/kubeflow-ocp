@@ -33,6 +33,13 @@ export base_domain=$(oc get dns cluster -o jsonpath='{.spec.baseDomain}')
 envsubst < ./openshift/sm_cp_patch.yaml | oc apply -f - -n ${sm_cp_namespace}
 ```
 
+Integrate ServiceMesh and Serverless
+
+```shell
+oc label namespace knative-serving serving.knative.openshift.io/system-namespace=true
+oc label namespace knative-serving-ingress serving.knative.openshift.io/system-namespace=true
+```
+
 Prepare the kubeflow namespace
 
 ```shell
@@ -80,4 +87,13 @@ remove kubeflow
 
 ```shell
 kfctl delete -V --file=./kfctl_kube_multi-user.v1.2.0.yaml
+```
+
+## Test kfserving
+
+Position yourself in a user namespace
+
+```shell
+export namespace=raffa
+oc apply -f ./serving/kfserving/tensorflow/tf-inference.yaml -n ${namespace}
 ```
