@@ -5,6 +5,10 @@ metadata:
 spec:
   version: v2.0
   proxy:
+    networking:
+      trafficControl:
+        outbound:
+          excludedIPRanges: [${allowed_cidrs_csv}]
     injection:
       autoInject: true
       neverInjectSelector:

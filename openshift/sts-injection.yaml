@@ -1,7 +1,7 @@
 apiVersion: mutations.gatekeeper.sh/v1alpha1
 kind: AssignMetadata
 metadata:
-  name: sts-annotation-injection
+  name: sts-role-annotation-injection
 spec:
   match:
     scope: Namespaced
@@ -10,7 +10,12 @@ spec:
         - ''
         kinds: 
         - ServiceAccount                                    
-  location: "metadata.annotations.'eks.amazonaws.com/audience'"
+  location: "metadata.annotations.'eks.amazonaws.com/role-arn'"
   parameters:
     assign:
-      value: "sts.amazonaws.com"
+      value: "${role_arn}"      
+
+
+
+
+     
