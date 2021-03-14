@@ -14,6 +14,19 @@ We assume that there is a service mesh control plane fully dedicated to the kube
 We set up sso between kubeflow and OpenShift.
 When an OCP User is created the corresponding kubeflow profile is also created.
 
+## Status of the project
+
+| Feature  | Status  |
+|:-|:-:|
+| Kubeflow - ServiceMesh - Serverless integration  | done  |
+| Kubeflow - OCP SSO   | done  |
+| Kubeflow multitenancy (this includes automatic profile creation)  | done  |
+| Kubeflow notebooks   | done  |
+| Elyra notebook  | done  |
+| Kubeflow pipelines   | not working, help wanted  |
+| kubeflow serving: kfserving | done  |
+| kubeflow serving: seldon | in progress  |
+
 ## Prepare notebook image compatible with OCP security
 
 Kubeflow notebook images have some special requirements, this is just an example of how to create one.
@@ -25,6 +38,8 @@ oc start-build tf-notebook-image -n openshift
 this will create this image:
 image-registry.openshift-image-registry.svc:5000/openshift/tf-notebook-image
 ```
+
+TODO add instructions on how to prepare the elyra image.
 
 ## Patch the service mesh for Kubeflow SSO
 
@@ -78,6 +93,14 @@ export role_arn=$(aws iam create-role --role-name s3-access --assume-role-policy
 aws iam attach-role-policy --role-name s3-access --policy-arn ${policy_arn}
 ```
 
+Configure sts injection
+
+```shell
+export role_arn=$(aws iam get-role --role-name s3-access | jq -r .Role.Arn)
+oc apply -f ./openshift/gatekeeper.yaml
+envsubst < ./openshift/sts-injection.yaml | oc apply -f -
+```
+
 ## Prepare the kubeflow namespace
 
 ```shell
@@ -112,7 +135,7 @@ cd ..
 ## to here
 ```
 
-Configure automatic profile creation, and profile namespace configuration:
+## Configure automatic profile creation, and profile namespace configuration:
 
 ```shell
 export sm_cp_namespace=istio-system #change based on your settings
@@ -121,21 +144,7 @@ oc apply -f ./openshift/kubeflow-profile-creation.yaml
 envsubst < ./openshift/kubeflow-profile-namespace-config.yaml | oc apply -f -
 ```
 
-Configure sts injection
-
-```shell
-export role_arn=$(aws iam get-role --role-name s3-access | jq -r .Role.Arn)
-oc apply -f ./openshift/gatekeeper.yaml
-envsubst < ./openshift/sts-injection.yaml | oc apply -f -
-```
-
-remove kubeflow
-
-```shell
-kfctl delete -V --file=./kfctl_kube_multi-user.v1.2.0.yaml
-```
-
-## Test kfserving
+## Kubeflow serving: kfserving
 
 Position yourself in a user namespace
 
@@ -153,7 +162,7 @@ SERVICE_HOSTNAME=$(oc get inferenceservice ${MODEL_NAME} -n ${namespace} -o json
 curl -k https://${SERVICE_HOSTNAME}/v1/models/$MODEL_NAME:predict -d $INPUT_PATH
 ```
 
-## Test seldon
+## Kubeflow serving: seldon
 
 Position yourself in a user namespace
 
@@ -177,4 +186,10 @@ MODEL_NAME=flowers-sample
 INPUT_PATH=@./serving/seldon/tensorflow/input.json
 SERVICE_HOSTNAME=$(oc get route istio-ingressgateway -n istio-system -o jsonpath='{.spec.host}')
 curl -k https://${SERVICE_HOSTNAME}/seldon/${namespace}/${MODEL_NAME}/api/v1.0/predictions -d $INPUT_PATH  -H "Content-Type: application/json"
+```
+
+## remove kubeflow
+
+```shell
+kfctl delete -V --file=./kfctl_kube_multi-user.v1.2.0.yaml
 ```
