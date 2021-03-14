@@ -1,18 +1,18 @@
 # Kubeflow for OpenShift
 
 This guides helps you set up Kubeflow in an existing environment.
-We assume that that teh following operators are installed:
+We assume that that the following operators are installed:
 
-* Red Hat ServiceMesh
-* cert-manager
-* Red Hat Serverless (not tested yet).
-* namespace-configuration-operator
-* gatekeeper operator
+* [Red Hat ServiceMesh](https://docs.openshift.com/container-platform/4.7/service_mesh/v2x/installing-ossm.html)
+* [cert-manager](https://cert-manager.io/docs/installation/openshift/)
+* [Red Hat Serverless](https://docs.openshift.com/container-platform/4.7/serverless/admin_guide/installing-openshift-serverless.html)
+* [namespace-configuration-operator](https://github.com/redhat-cop/namespace-configuration-operator)
+* [gatekeeper-operator](https://github.com/gatekeeper/gatekeeper-operator)
 
-We assume that there is a service mesh control plane fully dedicated to the kubeflow workloads.
+We assume that there is a ServiceMesh control plane fully dedicated to the Kubeflow workloads.
 
-We set up sso between kubeflow and OpenShift.
-When an OCP User is created the corresponding kubeflow profile is also created.
+This approach sets up Single Sign On (SSO) between Kubeflow and OpenShift.
+When an OCP User is created the corresponding Kubeflow profile is also created.
 
 ## Status of the project
 
