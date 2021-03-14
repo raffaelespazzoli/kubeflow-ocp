@@ -169,3 +169,12 @@ curl -s -d '{"data": {"ndarray":[[1.0, 2.0, 5.0]]}}'    -X POST http://istio-sys
 ```shell
 oc apply -f ./serving/seldon/tensorflow/seldon.yaml -n ${namespace}
 ```
+
+Testing:
+
+```shell
+MODEL_NAME=flowers-sample
+INPUT_PATH=@./serving/seldon/tensorflow/input.json
+SERVICE_HOSTNAME=$(oc get route istio-ingressgateway -n istio-system -o jsonpath='{.spec.host}')
+curl -k https://${SERVICE_HOSTNAME}/seldon/${namespace}/${MODEL_NAME}/api/v1.0/predictions -d $INPUT_PATH  -H "Content-Type: application/json"
+```
