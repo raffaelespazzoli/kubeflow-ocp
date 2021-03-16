@@ -8,11 +8,14 @@ We assume that that the following operators are installed:
 * [Red Hat Serverless](https://docs.openshift.com/container-platform/4.7/serverless/admin_guide/installing-openshift-serverless.html)
 * [namespace-configuration-operator](https://github.com/redhat-cop/namespace-configuration-operator)
 * [gatekeeper-operator](https://github.com/gatekeeper/gatekeeper-operator)
+* [proactive-node-autoscaling](https://github.com/redhat-cop/proactive-node-scaling-operator)
 
 We assume that there is a ServiceMesh control plane fully dedicated to the Kubeflow workloads.
 
 This approach sets up Single Sign On (SSO) between Kubeflow and OpenShift.
 When an OCP User is created the corresponding Kubeflow profile is also created.
+
+This approach also assumes that the data lake is on AWS S3 and sets up transparent OCP workload to AWS STS authentication.
 
 ## Status of the project
 
@@ -25,21 +28,66 @@ When an OCP User is created the corresponding Kubeflow profile is also created.
 | Elyra notebook  | done  |
 | Kubeflow pipelines   | not working, help wanted  |
 | kubeflow serving: kfserving | done  |
-| kubeflow serving: seldon | in progress  |
+| kubeflow serving: seldon | done  |
+| kubeflow hyperparameters tuning | installed not tested  |
+| gpu support: notebooks | done |
+| gpu support: training   | not started |
+| gpu nodes: autoscaling | done |
+| gpu nodes: proactive autoscaling | in progress |
+| transparent data lake access: AWS STS Integration | done |
 
-## Prepare notebook image compatible with OCP security
+## Enable GPUs and node autoscaling
 
-Kubeflow notebook images have some special requirements, this is just an example of how to create one.
+We assume that nfd operator and gpu operator are correctly installed.
+We assume that gpu-enabled nodes are provisioned and tainted with:
 
-```shell
-oc apply -f ./openshift/build-notebook-image.yaml -n openshift
-oc start-build tf-notebook-image -n openshift
-
-this will create this image:
-image-registry.openshift-image-registry.svc:5000/openshift/tf-notebook-image
+```yaml
+  taints:
+    - key: workload
+      value: ai-ml
+      effect: NoSchedule
 ```
 
-TODO add instructions on how to prepare the elyra image.
+and labeled `workload=ai-ml`
+
+### Create gpu nodes
+
+You'll have to customize this with the right instance type
+
+```shell
+  export cluster_name=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')
+  export region=$(oc get infrastructure cluster -o jsonpath='{.status.platformStatus.aws.region}')
+  export ami=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.ami.id}')
+  export machine_type=ai-ml
+  export instance_type=g3s.xlarge
+  for z in a b c; do
+    export zone=${region}${z}
+    oc scale machineset -n openshift-machine-api $(envsubst < ./openshift/gpu-machineset.yaml | yq -r .metadata.name) --replicas 0 
+    envsubst < ./openshift/gpu-machineset.yaml | oc apply -f -
+  done
+```
+
+### Enable kubeflow user's namespaces to schedule on the tainted nodes
+
+```shell
+oc apply -f ./openshift/gatekeeper.yaml
+oc apply -f ./openshift/ai-ml-toleration.yaml
+```
+
+### Enable Autoscaling on gpu nodes
+
+```shell
+oc apply -f ./openshift/autoscaler.yaml
+for machineset in $(oc get machineset -n openshift-machine-api -o json | jq -r '.items[] | select (.spec.replicas!=0 and .spec.template.spec.metadata.labels.workload=="ai-ml") | .metadata.name'); do
+  machineset=$machineset envsubst < ./openshift/machineset-autoscaler.yaml | oc apply -f - -n openshift-machine-api
+done
+```
+
+### Enable proactive node autoscaling
+
+```shell
+oc apply -f ./openshift/ai-ml-watermark.yaml
+```
 
 ## Patch the service mesh for Kubeflow SSO
 
@@ -97,13 +145,14 @@ Configure sts injection
 
 ```shell
 export role_arn=$(aws iam get-role --role-name s3-access | jq -r .Role.Arn)
-oc apply -f ./openshift/gatekeeper.yaml
 envsubst < ./openshift/sts-injection.yaml | oc apply -f -
 ```
 
 ## Prepare the kubeflow namespace
 
 ```shell
+export sm_cp_namespace=istio-system #change based on your settings
+export sm_cp_name=basic #change
 oc new-project kubeflow
 oc label namespace kubeflow  control-plane=kubeflow katib-metricscollector-injection=enabled istio-injection=enabled
 envsubst < ./openshift/kubeflow-sm-member.yaml | oc apply -f - -n kubeflow
@@ -143,6 +192,20 @@ export sm_cp_name=basic #change
 oc apply -f ./openshift/kubeflow-profile-creation.yaml
 envsubst < ./openshift/kubeflow-profile-namespace-config.yaml | oc apply -f -
 ```
+
+## Prepare notebook image compatible with OCP security
+
+Kubeflow notebook images have some special requirements, this is just an example of how to create one.
+
+```shell
+oc apply -f ./openshift/build-notebook-image.yaml -n openshift
+oc start-build tf-notebook-image -n openshift
+
+this will create this image:
+image-registry.openshift-image-registry.svc:5000/openshift/tf-notebook-image
+```
+
+TODO add instructions on how to prepare the elyra image.
 
 ## Kubeflow serving: kfserving
 
@@ -185,8 +248,10 @@ Testing:
 MODEL_NAME=flowers-sample
 INPUT_PATH=@./serving/seldon/tensorflow/input.json
 SERVICE_HOSTNAME=$(oc get route istio-ingressgateway -n istio-system -o jsonpath='{.spec.host}')
-curl -k https://${SERVICE_HOSTNAME}/seldon/${namespace}/${MODEL_NAME}/api/v1.0/predictions -d $INPUT_PATH  -H "Content-Type: application/json"
+curl -k http://${SERVICE_HOSTNAME}/seldon/${namespace}/${MODEL_NAME}/api/v1.0/predictions -d $INPUT_PATH  -H "Content-Type: application/json"
 ```
+
+
 
 ## remove kubeflow
 

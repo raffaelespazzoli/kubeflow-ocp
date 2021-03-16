@@ -4,6 +4,7 @@ metadata:
   name: flowers-sample
 spec:
   name: flowers-sample
+  #protocol: kfserving
   predictors:
   - graph:
       implementation: TENSORFLOW_SERVER
@@ -11,3 +12,25 @@ spec:
       name: flower-classifier
     name: default-predictor
     replicas: 1
+--- 
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: flowers-sample-http-classifier
+  namespace: raffa
+spec:
+  gateways:
+    - kubeflow/kubeflow-gateway
+  hosts:
+    - '*'
+  http:
+    - match:
+        - uri:
+            prefix: /seldon/raffa/flowers-sample-classifier/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: flowers-sample-default-predictor-flower-classifier
+            port:
+              number: 9000
