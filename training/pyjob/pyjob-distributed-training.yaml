@@ -1,0 +1,41 @@
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: pytorch-tcp-dist-mnist
+spec:
+  cleanPodPolicy: None
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          containers:
+          - image: quay.io/raffaelespazzoli/pytorch-dist-mnist_test@sha256:d9f034d8f3e4bf2755d0e17ab58419e94258027363ff03c5bdecca63eca813d8
+            name: pytorch
+            ports:
+            - containerPort: 23456
+              name: pytorchjob-port
+            resources: 
+              limits:
+                nvidia.com/gpu: 1
+    Worker:
+      replicas: 3
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          containers:
+          - image: quay.io/raffaelespazzoli/pytorch-dist-mnist_test@sha256:d9f034d8f3e4bf2755d0e17ab58419e94258027363ff03c5bdecca63eca813d8
+            name: pytorch
+            ports:
+            - containerPort: 23456
+              name: pytorchjob-port
+            resources: 
+              limits:
+                nvidia.com/gpu: 1

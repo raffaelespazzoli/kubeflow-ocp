@@ -86,6 +86,7 @@ done
 ### Enable proactive node autoscaling
 
 ```shell
+oc apply -f ./openshift/priority-classes.yaml
 oc apply -f ./openshift/ai-ml-watermark.yaml
 ```
 
@@ -251,7 +252,34 @@ SERVICE_HOSTNAME=$(oc get route istio-ingressgateway -n istio-system -o jsonpath
 curl -k http://${SERVICE_HOSTNAME}/seldon/${namespace}/${MODEL_NAME}/api/v1.0/predictions -d $INPUT_PATH  -H "Content-Type: application/json"
 ```
 
+## Kubeflow training: tfJob
 
+## Simple training
+
+```shell
+export namespace=raffa
+oc apply -f ./training/tfjob/tfjob-minst.yaml -n ${namespace}
+```
+
+### tf gpu-distributed training
+
+#### Create distributed training job
+
+```shell
+export namespace=raffa
+oc apply -f ./training/tfjob/tfjob-gpu.yaml -n ${namespace}
+```
+
+## Kubeflow training: pytorch
+
+### pytorch gpu-distributed training
+
+```shell
+docker build -t quay.io/raffaelespazzoli/pytorch-dist-mnist_test:1.0 -t quay.io/raffaelespazzoli/pytorch-dist-mnist_test:latest .
+docker push quay.io/raffaelespazzoli/pytorch-dist-mnist_test:1.0 quay.io/raffaelespazzoli/pytorch-dist-mnist_test:latest
+export namespace=raffa
+oc apply -f ./training/pyjob/pyjob-distributed-training.yaml -n ${namespace}
+```
 
 ## remove kubeflow
 

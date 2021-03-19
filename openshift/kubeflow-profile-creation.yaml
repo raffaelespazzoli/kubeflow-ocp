@@ -19,7 +19,7 @@ spec:
           hard:
             cpu: "8"
             memory: 16Gi
-            "requests.nvidia.com/gpu": "2"
+            "requests.nvidia.com/gpu": "10"
             persistentvolumeclaims: "10"
             requests.storage: "200Gi"
   - objectTemplate: | 
