@@ -30,10 +30,12 @@ This approach also assumes that the data lake is on AWS S3 and sets up transpare
 | kubeflow serving: kfserving | done  |
 | kubeflow serving: seldon | done  |
 | kubeflow hyperparameters tuning | installed not tested  |
+| kubeflow training kfserving | done |
+| kubeflow distributed training pytorch | done |
 | gpu support: notebooks | done |
-| gpu support: training   | not started |
-| gpu nodes: autoscaling | done |
-| gpu nodes: proactive autoscaling | in progress |
+| gpu support: training   | done |
+| gpu nodes: autoscaling | done - need to closely observe the autoscaler behavior |
+| gpu nodes: proactive autoscaling | done |
 | transparent data lake access: AWS STS Integration | done |
 
 ## Enable GPUs and node autoscaling
