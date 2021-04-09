@@ -192,7 +192,7 @@ cd ..
 ```shell
 export sm_cp_namespace=istio-system #change based on your settings
 export sm_cp_name=basic #change
-oc apply -f ./openshift/kubeflow-profile-creation.yaml
+envsubst < ./openshift/kubeflow-profile-creation.yaml | oc apply -f -
 envsubst < ./openshift/kubeflow-profile-namespace-config.yaml | oc apply -f -
 ```
 
