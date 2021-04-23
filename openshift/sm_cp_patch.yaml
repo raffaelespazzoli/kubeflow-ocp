@@ -2,6 +2,7 @@ apiVersion: maistra.io/v2
 kind: ServiceMeshControlPlane
 metadata:
   name: ${sm_cp_name}
+  namespace: ${sm_cp_namespace}
 spec:
   version: v2.0
   proxy:
@@ -33,45 +34,89 @@ spec:
     grafana:
       enabled: true
   gateways:
+    additionalIngress:
+      kubeflow:
+        enabled: true
+        namepsace: ${kubeflow_namespace}
+        volumes:
+          - volume:
+              secret: 
+                secretName: proxy-tls
+            volumeMount:
+              name: proxy-tls
+              mountPath: /certs
+          - volume:
+              configMap: 
+                name: service-ca-bundle 
+            volumeMount:
+              name: service-ca-bundle
+              mountPath: /service-ca-bundle
+          - volume:
+              configMap: 
+                name: kube-root-ca.crt
+            volumeMount:
+              name: ocp-ca-bundle
+              mountPath: /ocp-ca-bundle                          
+        service:
+          metadata:
+            annotations:
+              service.alpha.openshift.io/serving-cert-secret-name: proxy-tls
+          ports:    
+            - name: http2
+              protocol: TCP
+              port: 80
+              targetPort: 8080
+            # - name: https
+            #   protocol: TCP
+            #   port: 443
+            #   targetPort: 443
+            - name: oauth
+              protocol: TCP
+              port: 9443
+              targetPort: 9443            
+            # - name: tls
+            #   protocol: TCP
+            #   port: 15443
+            #   targetPort: 15443        
     ingress:
       ingress: true
-      volumes:
-        - volume:
-            secret: 
-              secretName: proxy-tls
-          volumeMount:
-            name: proxy-tls
-            mountPath: /certs
-        - volume:
-            configMap: 
-              name: trusted-ca-bundle 
-          volumeMount:
-            name: trusted-ca-bundle
-            mountPath: /ca-bundle            
-      service:
-        metadata:
-          annotations:
-            service.alpha.openshift.io/serving-cert-secret-name: proxy-tls
-        ports:    
-          - name: http2
-            protocol: TCP
-            port: 80
-            targetPort: 8080
-          # - name: https
-          #   protocol: TCP
-          #   port: 443
-          #   targetPort: 443
-          - name: oauth
-            protocol: TCP
-            port: 9443
-            targetPort: 9443            
-          # - name: tls
-          #   protocol: TCP
-          #   port: 15443
-          #   targetPort: 15443
+      # volumes:
+      #   - volume:
+      #       secret: 
+      #         secretName: proxy-tls
+      #     volumeMount:
+      #       name: proxy-tls
+      #       mountPath: /certs
+      #   - volume:
+      #       configMap: 
+      #         name: trusted-ca-bundle 
+      #     volumeMount:
+      #       name: trusted-ca-bundle
+      #       mountPath: /ca-bundle            
+      # service:
+      #   metadata:
+      #     annotations:
+      #       service.alpha.openshift.io/serving-cert-secret-name: proxy-tls
+      #   ports:    
+      #     - name: http2
+      #       protocol: TCP
+      #       port: 80
+      #       targetPort: 8080
+      #     # - name: https
+      #     #   protocol: TCP
+      #     #   port: 443
+      #     #   targetPort: 443
+      #     - name: oauth
+      #       protocol: TCP
+      #       port: 9443
+      #       targetPort: 9443            
+      #     # - name: tls
+      #     #   protocol: TCP
+      #     #   port: 15443
+      #     #   targetPort: 15443
   techPreview:
     gateways:
-      istio-ingressgateway:
+      kubeflow:
         additionalContainers:
           - name: oauth2-proxy
             env:
@@ -87,17 +132,17 @@ spec:
               - '-http-address='
               - '-email-domain=*'
               - '-upstream=http://$(POD_IP):8080'
-              - '-openshift-sar={"namespace":"${sm_cp_namespace}","resource":"pods","verb":"get"}'
-              - '-openshift-delegate-urls={"/": {"namespace":"${sm_cp_namespace}","resource":"pods","verb":"get"}}'
+              - '-openshift-sar={"namespace":"${kubeflow_namespace}","resource":"pods","verb":"get"}'
+              - '-openshift-delegate-urls={"/": {"namespace":"${kubeflow_namespace}","resource":"pods","verb":"get"}}'
               - '-tls-cert=/certs/tls.crt'
               - '-tls-key=/certs/tls.key'
               - '-client-id=kubeflow-istio'
               - '-client-secret=SECRET'
               - '-cookie-secret=SECRET'
-              - '-openshift-ca=/ca-bundle/ca-bundle.crt'
-              - '-openshift-ca=/ca-bundle/service-ca.crt'
+              - '-openshift-ca=/ocp-ca-bundle/ca.crt'
+              - '-openshift-ca=/service-ca-bundle/service-ca.crt'
               - '-openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'               
-            image: 'quay.io/openshift/origin-oauth-proxy:4.6'
+            image: 'quay.io/openshift/origin-oauth-proxy:4.7'
             imagePullPolicy: Always
             ports:
               - containerPort: 8081
@@ -106,8 +151,47 @@ spec:
             volumeMounts:
               - name: proxy-tls
                 mountPath: /certs
-              - name: trusted-ca-bundle
-                mountPath: /ca-bundle                
+              - name: service-ca-bundle
+                mountPath: /service-ca-bundle
+              - name: ocp-ca-bundle
+                mountPath: /ocp-ca-bundle                      
+      # istio-ingressgateway:
+      #   additionalContainers:
+      #     - name: oauth2-proxy
+      #       env:
+      #       - name: POD_IP
+      #         valueFrom:
+      #           fieldRef:
+      #             apiVersion: v1
+      #             fieldPath: status.podIP
+      #       args:
+      #         - '-provider=openshift'
+      #         - '-pass-basic-auth=false'
+      #         - '-https-address=:9443'
+      #         - '-http-address='
+      #         - '-email-domain=*'
+      #         - '-upstream=http://$(POD_IP):8080'
+      #         - '-openshift-sar={"namespace":"${sm_cp_namespace}","resource":"pods","verb":"get"}'
+      #         - '-openshift-delegate-urls={"/": {"namespace":"${sm_cp_namespace}","resource":"pods","verb":"get"}}'
+      #         - '-tls-cert=/certs/tls.crt'
+      #         - '-tls-key=/certs/tls.key'
+      #         - '-client-id=kubeflow-istio'
+      #         - '-client-secret=SECRET'
+      #         - '-cookie-secret=SECRET'
+      #         - '-openshift-ca=/ca-bundle/ca-bundle.crt'
+      #         - '-openshift-ca=/ca-bundle/service-ca.crt'
+      #         - '-openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'               
+      #       image: 'quay.io/openshift/origin-oauth-proxy:4.6'
+      #       imagePullPolicy: Always
+      #       ports:
+      #         - containerPort: 8081
+      #           protocol: TCP
+      #           name: oauth-http
+      #       volumeMounts:
+      #         - name: proxy-tls
+      #           mountPath: /certs
+      #         - name: trusted-ca-bundle
+      #           mountPath: /ca-bundle                
 ---
 kind: OAuthClient
 apiVersion: oauth.openshift.io/v1
@@ -118,19 +202,43 @@ redirectURIs:
  - "https://kubeflow.apps.${base_domain}" 
 grantMethod: auto 
 ---
+# kind: ConfigMap
+# apiVersion: v1
+# metadata:
+#   name: trusted-ca-bundle
+#   annotations:
+#     service.alpha.openshift.io/inject-cabundle: 'true'
+#   labels:
+#     config.openshift.io/inject-trusted-cabundle: "true"
+---
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: trusted-ca-bundle
+  name: service-ca-bundle
+  namespace: ${sm_cp_namespace}
   annotations:
-    service.alpha.openshift.io/inject-cabundle: 'true'
-  labels:
-    config.openshift.io/inject-trusted-cabundle: "true"    
+    service.alpha.openshift.io/inject-cabundle: 'true'       
+---
+# apiVersion: route.openshift.io/v1
+# kind: Route
+# metadata:
+#   name: secure-kubeflow
+# spec:
+#   host: kubeflow.apps.${base_domain}
+#   port:
+#     targetPort: 9443
+#   tls:
+#     insecureEdgeTerminationPolicy: Redirect
+#     termination: reencrypt
+#   to:
+#     kind: Service
+#     name: istio-ingressgateway
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: secure-kubeflow
+  namespace: ${sm_cp_namespace}
 spec:
   host: kubeflow.apps.${base_domain}
   port:
@@ -140,17 +248,101 @@ spec:
     termination: reencrypt
   to:
     kind: Service
-    name: istio-ingressgateway
+    name: kubeflow    
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: istio-ingress-oauth
+  name: istio-ingress-kubeflow-oauth
 subjects:
 - kind: ServiceAccount
   namespace: ${sm_cp_namespace}
-  name: istio-ingressgateway-service-account
+  name: kubeflow-service-account
 roleRef:
   kind: ClusterRole
   name: grafana
-  apiGroup: rbac.authorization.k8s.io          
+  apiGroup: rbac.authorization.k8s.io   
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: x-forwarded-user-to-kubeflow-userid
+  namespace: ${sm_cp_namespace}
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+      maistra.io/gateway: kubeflow.istio-system
+  configPatches:
+  - applyTo: HTTP_FILTER # http connection manager is a filter in Envoy
+    match:
+      context: GATEWAY
+    patch:
+      operation: INSERT_BEFORE
+      value: # lua filter specification
+       name: envoy.lua
+       typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+          inlineCode: |
+            function envoy_on_request(request_handle)
+              headers = request_handle:headers()
+              request_handle:headers():add("kubeflow-userid", headers:get("x-forwarded-user"))
+              --[[
+              userid = headers:get("x-forwarded-user")
+              if (not userid == '') then
+                request_handle:headers():add("kubeflow-userid", userid)
+              end 
+              --]]          
+            end      
+---            
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: custom-header-span-x-forwarded-user
+  namespace: ${sm_cp_namespace}
+spec:
+  configPatches:
+    - applyTo: NETWORK_FILTER
+      match:
+        listener:
+          filterChain:
+            filter:
+              name: envoy.http_connection_manager
+      patch:
+        operation: MERGE
+        value:
+          typed_config:
+            '@type': >-
+              type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+            tracing:
+              custom_tags:
+                - request_header:
+                    default_value: n/a
+                    name: x-forwarded-user
+                  tag: x-forwarded-user
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: custom-header-span-kubeflow-userid
+  namespace: ${sm_cp_namespace}
+spec:
+  configPatches:
+    - applyTo: NETWORK_FILTER
+      match:
+        listener:
+          filterChain:
+            filter:
+              name: envoy.http_connection_manager
+      patch:
+        operation: MERGE
+        value:
+          typed_config:
+            '@type': >-
+              type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+            tracing:
+              custom_tags:
+                - request_header:
+                    default_value: n/a
+                    name: kubeflow-userid
+                  tag: kubeflow-userid                           

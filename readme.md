@@ -1,6 +1,6 @@
 # Kubeflow for OpenShift
 
-This guides helps you set up Kubeflow in an existing environment.
+This guides helps you set up Kubeflow 1.3 in an existing environment.
 We assume that that the following operators are installed:
 
 * [Red Hat ServiceMesh](https://docs.openshift.com/container-platform/4.7/service_mesh/v2x/installing-ossm.html)
@@ -98,8 +98,9 @@ oc apply -f ./openshift/ai-ml-watermark.yaml
 export allowed_cidrs_csv=$(curl --no-progress-meter https://ip-ranges.amazonaws.com/ip-ranges.json | jq -r '.prefixes[] | select(.region=="us-east-2" or .region=="us-east-1" or .region=="us-west-1" or .region=="us-west-2") | select(.service=="S3" or .service=="AMAZON") | .ip_prefix' | awk -vORS=, '{print $1}' | sed 's/,$/\n/')
 export sm_cp_namespace=istio-system #change based on your settings
 export sm_cp_name=basic #change
+export kubeflow_namespace=kubeflow
 export base_domain=$(oc get dns cluster -o jsonpath='{.spec.baseDomain}')
-envsubst < ./openshift/sm_cp_patch.yaml | oc apply -f - -n ${sm_cp_namespace}
+envsubst < ./openshift/sm_cp_patch.yaml | oc apply -f -
 ```
 
 ## Integrate ServiceMesh and Serverless
@@ -157,34 +158,17 @@ envsubst < ./openshift/sts-injection.yaml | oc apply -f -
 export sm_cp_namespace=istio-system #change based on your settings
 export sm_cp_name=basic #change
 oc new-project kubeflow
-oc label namespace kubeflow  control-plane=kubeflow katib-metricscollector-injection=enabled istio-injection=enabled
+oc label namespace kubeflow istio-injection=enabled control-plane=kubeflow katib-metricscollector-injection=enabled --overwrite
 envsubst < ./openshift/kubeflow-sm-member.yaml | oc apply -f - -n kubeflow
 oc apply -f ./openshift/allow-apiserver-webhooks.yaml -n kubeflow
-oc adm policy add-scc-to-user anyuid -z application-controller-service-account -n kubeflow
-oc adm policy add-scc-to-user anyuid -z default -n kubeflow
-oc adm policy add-scc-to-user anyuid -z seldon-manager -n kubeflow
 oc adm policy add-scc-to-user anyuid -z kubeflow-pipelines-cache-deployer-sa -n kubeflow
-oc adm policy add-scc-to-user anyuid -z admission-webhook-service-account -n kubeflow
+oc adm policy add-scc-to-user anyuid -z xgboost-operator-service-account -n kubeflow
 ```
 
 deploy kubeflow
 
 ```shell
-export manifests_dir=/home/rspazzol/git/kubeflow-manifests #change to something else if need be
-git -C $(dirname "$manifests_dir") clone https://github.com/raffaelespazzoli/manifests -b ocp
-export KF_DIR=$(pwd)/kfctl-run
-
-## loop from here
-
-rm -rf ${KF_DIR}
-mkdir -p ${KF_DIR}
-envsubst < ./kfctl_kube_multi-user.v1.2.0.yaml  > ./kfctl-run/kfctl_kube_multi-user.v1.2.0.yaml
-cd ${KF_DIR}
-kfctl build -V --file=./kfctl_kube_multi-user.v1.2.0.yaml
-kfctl apply -V --file=./kfctl_kube_multi-user.v1.2.0.yaml
-cd ..
-
-## to here
+./kustomize --load-restrictor=LoadRestrictionsNone build ./kubeflow1.3 | oc apply -f - -n kubeflow
 ```
 
 ## Configure automatic profile creation, and profile namespace configuration:

@@ -1,0 +1,66 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+# Cert-Manager
+# - https://github.com/kubeflow/manifests/common/cert-manager/cert-manager-kube-system-resources/base
+# - https://github.com/kubeflow/manifests/common/cert-manager/cert-manager-crds/base
+# - https://github.com/kubeflow/manifests/common/cert-manager/cert-manager/overlays/self-signed
+# - https://github.com/kubeflow/manifests/common/cert-manager/cert-manager/kubeflow-issuer/?ref=v1.3.0
+# Istio
+# - https://github.com/kubeflow/manifests/common/istio-1-9-0/istio-crds/base
+# - https://github.com/kubeflow/manifests/common/istio-1-9-0/istio-namespace/base
+# - https://github.com/kubeflow/manifests/common/istio-1-9-0/istio-install/base
+# OIDC Authservice
+# - https://github.com/kubeflow/manifests/common/oidc-authservice/base
+# Dex
+# - https://github.com/kubeflow/manifests/common/dex/overlays/istio
+# KNative
+# - https://github.com/kubeflow/manifests/common/knative/knative-serving-crds/base
+# - https://github.com/kubeflow/manifests/common/knative/knative-serving-install/base
+# - https://github.com/kubeflow/manifests/common/knative/knative-eventing-crds/base
+# - https://github.com/kubeflow/manifests/common/knative/knative-eventing-install/base
+- https://github.com/kubeflow/manifests/common/istio-1-9-0/cluster-local-gateway/base/?ref=v1.3.0
+# Kubeflow namespace
+# - https://github.com/kubeflow/manifests/common/kubeflow-namespace/base/?ref=v1.3.0
+# Kubeflow Roles
+- https://github.com/kubeflow/manifests/common/kubeflow-roles/base/?ref=v1.3.0
+# Kubeflow Istio Resources
+- https://github.com/kubeflow/manifests/common/istio-1-9-0/kubeflow-istio-resources/base/?ref=v1.3.0
+
+
+# Kubeflow Pipelines
+- https://github.com/kubeflow/manifests/apps/pipeline/upstream/env/platform-agnostic-multi-user/?ref=v1.3.0
+# KFServing
+- https://github.com/kubeflow/manifests/apps/kfserving/upstream/overlays/kubeflow/?ref=v1.3.0
+# Katib
+- https://github.com/kubeflow/manifests/apps/katib/upstream/installs/katib-with-kubeflow/?ref=v1.3.0
+# Central Dashboard
+- https://github.com/kubeflow/manifests/apps/centraldashboard/upstream/overlays/istio/?ref=v1.3.0
+# Admission Webhook
+- https://github.com/kubeflow/manifests/apps/admission-webhook/upstream/overlays/cert-manager/?ref=v1.3.0
+# Notebook Controller
+- https://github.com/kubeflow/manifests/apps/jupyter/jupyter-web-app/upstream/overlays/istio/?ref=v1.3.0
+# Jupyter Web App
+- https://github.com/kubeflow/manifests/apps/jupyter/notebook-controller/upstream/overlays/kubeflow/?ref=v1.3.0
+# Profiles + KFAM
+- https://github.com/kubeflow/manifests/apps/profiles/upstream/overlays/kubeflow/?ref=v1.3.0
+# Volumes Web App
+- https://github.com/kubeflow/manifests/apps/volumes-web-app/upstream/overlays/istio/?ref=v1.3.0
+# Tensorboards Web App
+-  https://github.com/kubeflow/manifests/apps/tensorboard/tensorboard-controller/upstream/overlays/kubeflow/?ref=v1.3.0
+# Tensorboard Controller
+-  https://github.com/kubeflow/manifests/apps/tensorboard/tensorboards-web-app/upstream/overlays/istio/?ref=v1.3.0
+# TFJob Operator
+- https://github.com/kubeflow/manifests/apps/tf-training/upstream/overlays/kubeflow/?ref=v1.3.0
+# Pytorch Operator
+- https://github.com/kubeflow/manifests/apps/pytorch-job/upstream/overlays/kubeflow/?ref=v1.3.0
+# MPI Operator
+- https://github.com/kubeflow/manifests/apps/mpi-job/upstream/overlays/kubeflow/?ref=v1.3.0
+# MXNet Operator
+- https://github.com/kubeflow/manifests/apps/mxnet-job/upstream/overlays/kubeflow/?ref=v1.3.0
+# XGBoost Operator
+- https://github.com/kubeflow/manifests/apps/xgboost-job/upstream/overlays/kubeflow/?ref=v1.3.0
+
+# User namespace
+# - https://github.com/kubeflow/manifests/common/user-namespace/base
