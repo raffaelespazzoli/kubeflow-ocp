@@ -13,6 +13,7 @@ spec:
       - seldon
       - katib-controller
       - kfserving
+      - poddefaults
   ingress:
     - ports:
       - port: 443
@@ -20,4 +21,6 @@ spec:
       - port: 8443
         protocol: TCP 
       - port: 9443
-        protocol: TCP                                  
+        protocol: TCP
+      - port: 4443
+        protocol: TCP                                          

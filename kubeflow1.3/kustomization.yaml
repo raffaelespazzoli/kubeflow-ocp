@@ -64,3 +64,12 @@ resources:
 
 # User namespace
 # - https://github.com/kubeflow/manifests/common/user-namespace/base
+
+patches:
+  - path: ./kfserving-config-patch.yaml
+    target:
+      group: ""
+      version: v1
+      kind: ConfigMap
+      name: inferenceservice-config
+      namespace: kubeflow

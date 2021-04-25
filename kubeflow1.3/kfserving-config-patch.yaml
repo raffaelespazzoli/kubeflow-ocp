@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inferenceservice-config
+  namespace: kubeflow
+data:
+  storageInitializer: |-
+    {
+    "image" : "quay.io/raffaelespazzoli/aws-model-initializer:latest",
+    "memoryRequest": "100Mi",
+    "memoryLimit": "1Gi",
+    "cpuRequest": "100m",
+    "cpuLimit": "1"
+    }

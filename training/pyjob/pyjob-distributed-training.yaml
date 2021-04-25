@@ -15,6 +15,7 @@ spec:
         spec:
           containers:
           - image: quay.io/raffaelespazzoli/pytorch-dist-mnist_test@sha256:d9f034d8f3e4bf2755d0e17ab58419e94258027363ff03c5bdecca63eca813d8
+            args: ["--backend", "gloo"]
             name: pytorch
             ports:
             - containerPort: 23456
@@ -33,6 +34,7 @@ spec:
           containers:
           - image: quay.io/raffaelespazzoli/pytorch-dist-mnist_test@sha256:d9f034d8f3e4bf2755d0e17ab58419e94258027363ff03c5bdecca63eca813d8
             name: pytorch
+            args: ["--backend", "gloo"]
             ports:
             - containerPort: 23456
               name: pytorchjob-port
