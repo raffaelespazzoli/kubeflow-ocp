@@ -66,11 +66,31 @@ oc new-project gpu-operator-resources
 helm upgrade -i nfd-operator helm/nfd-operator -n openshift-operators
 ```
 
+### Get entitlement from Red Hat
+
+Get entitlement...
+
+1. Navigate to <https://access.redhat.com/management/systems>
+2. Create a new system, call it whatever you like
+3. Select the newly created system
+4. Select Subscriptions tab
+5. Select Attach Subscription
+6. Search and add the "Red Hat Developer Subscription for Individuals" Subscription
+7. In the same window select the Download Certificates button
+8. Unzip the consumer_export within the zipped file
+9. Grab the location of consumer_export/export/entitlement_certificates/*.pem file and copy it to the current directory, naming it `nvidia.pem` instead
+
+Optionally, you may follow the Instructions from <https://docs.nvidia.com/datacenter/kubernetes/openshift-on-gpu-install-guide/index.html#openshift-gpu-install-gpu-operator-via-helmv3> to test the entitlement.
+
 ## Create Autoscaler, ClusterPolicy, and GPU MachineSets
 
 ```sh
-helm upgrade -i autoscaler helm/autoscaler --set machinesets.infrastructure_id=$(oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster) -n gpu-operator-resources
+helm upgrade -i autoscaler helm/autoscaler --set machinesets.infrastructure_id=$(oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster) --set cluster_policy.machineconfigs.base64_pem=$(base64 -w0 nvidia.pem) -n gpu-operator-resources 
 ```
+
+See <https://github.com/NVIDIA/gpu-operator/issues/140> which explains why we need to set the initial replicas to one for the p2 instance type to avoid constant down and up scaling.
+
+See <https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#my-cluster-is-below-minimum--above-maximum-number-of-nodes-but-ca-did-not-fix-that-why> which explains why the MachineAutoscaler won't increase the minimum to one for the p2 instance type initially... there are no unschedulable pods at this point.
 
 ## Enable kubeflow user's namespaces to schedule on the tainted nodes
 

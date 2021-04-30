@@ -4,3 +4,4 @@
 kfctl-run/
 models/
 kustomize
+*.pem

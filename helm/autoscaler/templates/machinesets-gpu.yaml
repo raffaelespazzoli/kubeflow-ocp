@@ -8,7 +8,7 @@ metadata:
   name: {{ printf "%v-%v-%v" $.Values.machinesets.infrastructure_id .name .zone }}
   namespace: openshift-machine-api
 spec:
-  replicas: 0
+  replicas: {{ .replicas }}
   selector:
     matchLabels:
       machine.openshift.io/cluster-api-cluster: {{ $.Values.machinesets.infrastructure_id }}
@@ -25,6 +25,7 @@ spec:
         labels:
           workload: {{ .label }}
           node-role.kubernetes.io/{{ .label }}: ''
+          cluster-api/accelerator: "true"
       taints:
         - key: workload
           value: {{ .label }}
