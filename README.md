@@ -95,6 +95,17 @@ See <https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ
 ## Enable kubeflow user's namespaces to schedule on the tainted nodes
 
 ```shell
-oc apply -f ./openshift/gatekeeper.yaml
-oc apply -f ./openshift/ai-ml-toleration.yaml
+helm upgrade -i gatekeeper-configs helm/gatekeeper-configs -n gpu-operator-resources
+helm upgrade -i gatekeeper-metadata helm/gatekeeper-metadata -n gpu-operator-resources
+```
+
+## Patch the service mesh for Kubeflow SSO
+
+```shell
+export allowed_cidrs_csv=$(curl -s https://ip-ranges.amazonaws.com/ip-ranges.json | jq -r '.prefixes[] | select(.region=="us-east-2" or .region=="us-east-1" or .region=="us-west-1" or .region=="us-west-2") | select(.service=="S3" or .service=="AMAZON") | .ip_prefix' | awk -vORS=, '{print $1}' | sed 's/,$/\n/')
+export sm_cp_namespace=istio-system #change based on your settings
+export sm_cp_name=basic #change
+export kubeflow_namespace=kubeflow
+export base_domain=$(oc get dns cluster -o jsonpath='{.spec.baseDomain}')
+helm upgrade -i control-plane helm/control-plane -n istio-system --create-namespace --set control_plane.allowed_cidrs_csv=${allowed_cidrs_csv} --set control_plane.name=${sm_cp_namespace} --set control_plane.name=${sm_cp_name} --set control_plane.ingress.kubeflow.namespace=${kubeflow_namespace} --set base_domain=${base_domain}
 ```
