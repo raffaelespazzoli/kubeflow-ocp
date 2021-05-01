@@ -232,3 +232,9 @@ oc apply -f ./training/pyjob/pyjob-distributed-training.yaml -n ${namespace}
 ```shell
 ./kustomize --load-restrictor=LoadRestrictionsNone build ./kubeflow1.3 | oc delete -f -
 ```
+
+## Disable node autoscaling
+
+```shell
+oc patch ClusterAutoscaler default --type='json' -p='[{"op": "replace", "path": "/spec", "value":{}}]'
+```

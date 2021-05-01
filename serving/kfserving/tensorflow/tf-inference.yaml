@@ -4,6 +4,8 @@ metadata:
   name: "flowers-sample"
   annotations:
     sidecar.istio.io/inject: "false"
+  labels:
+    workload-type: kfserving  
 spec:
   default:
     predictor:

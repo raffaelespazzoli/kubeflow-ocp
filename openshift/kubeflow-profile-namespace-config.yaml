@@ -104,4 +104,33 @@ spec:
                 serving.knative.openshift.io/system-namespace: "true"
         podSelector: {}
         policyTypes:
-        - Ingress                   
+        - Ingress
+# this is the right way to do it, not possible until: https://github.com/istio/api/issues/1965        
+  # - objectTemplate: |
+  #     apiVersion: security.istio.io/v1beta1
+  #     kind: AuthorizationPolicy
+  #     metadata:
+  #       name: allowlist-kfserving-pods
+  #       namespace: {{ .Name }}
+  #     spec:
+  #       selector:
+  #         matchExpressions:
+  #           - key: "serving.knative.dev/service"
+  #             operator: Exists
+  #       action: ALLOW
+  #       rules:
+  #       - {}
+# workaround        
+  - objectTemplate: |
+      apiVersion: security.istio.io/v1beta1
+      kind: AuthorizationPolicy
+      metadata:
+        name: allowlist-kfserving-pods
+        namespace: {{ .Name }}
+      spec:
+        selector:
+          matchLabels:
+            workload-type: kfserving
+        action: ALLOW
+        rules:
+        - {}                            
