@@ -1,6 +1,6 @@
 # Helm install
 
-Steps for installing kubeflow using Helm.
+Steps for installing Kubeflow using Helm.
 
 ## Install operators
 

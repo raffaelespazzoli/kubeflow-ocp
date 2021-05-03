@@ -1,5 +1,7 @@
 # Kubeflow for OpenShift
 
+> For installation using Helm, follow [README-helm-install.md](./README-helm-install.md)
+
 This guides helps you set up Kubeflow 1.3 in an existing environment.
 We assume that that the following operators are installed:
 
