@@ -103,6 +103,12 @@ export base_domain=$(oc get dns cluster -o jsonpath='{.spec.baseDomain}')
 envsubst < ./openshift/sm_cp_patch.yaml | oc apply -f -
 ```
 
+## Enable Knative Serving
+
+```sh
+oc apply -f openshift/knativeserving-knative-serving.yaml -n knative-serving
+```
+
 ## Integrate ServiceMesh and Serverless
 
 ```shell
@@ -166,6 +172,8 @@ oc adm policy add-scc-to-user anyuid -z xgboost-operator-service-account -n kube
 ```
 
 deploy kubeflow
+
+> Note: You may need to run this command twice since the CRDs need to exist first.
 
 ```shell
 ./kustomize --load-restrictor=LoadRestrictionsNone build ./kubeflow1.3 | oc apply -f -

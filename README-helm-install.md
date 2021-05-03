@@ -1,5 +1,7 @@
 # Helm install
 
+Steps for installing kubeflow using Helm.
+
 ## Install operators
 
 ### Cert Manager Operator
@@ -31,7 +33,7 @@ helm upgrade -i serverless-operators helm/serverless-operators -n openshift-serv
 ```sh
 helm repo add namespace-configuration-operator https://redhat-cop.github.io/namespace-configuration-operator
 helm repo update
-helm install namespace-configuration-operator namespace-configuration-operator/namespace-configuration-operator -n namespace-configuration-operator --create-namespace
+helm upgrade -i namespace-configuration-operator namespace-configuration-operator/namespace-configuration-operator -n namespace-configuration-operator --create-namespace
 ```
 
 ### Gatekeeper Operator
@@ -45,7 +47,7 @@ helm upgrade -i gatekeeper-operators helm/gatekeeper-operator
 ```sh
 helm repo add proactive-node-scaling-operator https://redhat-cop.github.io/proactive-node-scaling-operator
 helm repo update
-helm install proactive-node-scaling-operator proactive-node-scaling-operator/proactive-node-scaling-operator -n proactive-node-scaling-operator --create-namespace
+helm upgrade -i proactive-node-scaling-operator proactive-node-scaling-operator/proactive-node-scaling-operator -n proactive-node-scaling-operator --create-namespace
 ```
 
 ### GPU Operator
@@ -188,13 +190,11 @@ oc adm policy add-scc-to-user anyuid -z xgboost-operator-service-account -n kube
 kustomize --load-restrictor=LoadRestrictionsNone build ./kubeflow1.3 > helm/kubeflow/templates/kustomize-out.yaml
 ```
 
-You then need to extract the CRDs from helm/kubeflow/templates/kustomize-out.yaml and put them into helm/kubeflow-crds/templates/crds.yaml
+You then need to extract the CRDs from helm/kubeflow/templates/kustomize-out.yaml and put them into helm/kubeflow-crds/templates/crds.yaml so that we can install the CRDs first.
 
 Additionally, theres a ConfigMap that needs be modified to print correctly (not be interpreted by go templating) within helm/kubeflow/templates/kustomize-out.yaml...
 
-```yaml
-keyFormat: {{ printf "artifacts/{{workflow.name}}/{{pod.name}}" }}
-```
+See <https://github.com/trevorbox/kubeflow-ocp/blob/helmify/helm/kubeflow/templates/kustomize-out.yaml#L5707>
 
 ## Deploy Kubeflow
 
@@ -207,4 +207,43 @@ helm upgrade -i kubeflow-crds helm/kubeflow-crds -n kubeflow --create-namespace
 helm upgrade -i kubeflow helm/kubeflow -n kubeflow --create-namespace \
   --set control_plane.namespace=${sm_cp_namespace} \
   --set control_plane.name=${sm_cp_name}
+```
+
+## Configure automatic profile creation, and profile namespace configuration
+
+```shell
+export sm_cp_namespace=istio-system #change based on your settings
+export sm_cp_name=basic #change
+
+helm upgrade -i kubeflow-profile helm/kubeflow-profile -n kubeflow
+
+envsubst < ./openshift/kubeflow-profile-creation.yaml | oc apply -f -
+envsubst < ./openshift/kubeflow-profile-namespace-config.yaml | oc apply -f -
+```
+
+## Test the kubeflow dashboard
+
+```sh
+echo "Navigate to https://$(oc get route secure-kubeflow -n istio-system -o jsonpath={.spec.host})"
+```
+
+## Uninstall
+
+```sh
+helm delete kubeflow-profile -n kubeflow
+helm delete kubeflow -n kubeflow
+helm delete kubeflow-crds -n kubeflow
+helm delete serverless -n knative-serving
+helm delete control-plane -n istio-system
+helm delete gatekeeper-configs -n gpu-operator-resources
+helm delete gatekeeper-metadata -n gpu-operator-resources
+helm delete autoscaler -n gpu-operator-resources
+helm delete nfd-operator -n openshift-operators
+helm delete gpu-operator -n openshift-operators
+helm delete proactive-node-scaling-operator -n proactive-node-scaling-operator
+helm delete gatekeeper-operators -n default
+helm delete namespace-configuration-operator -n namespace-configuration-operator
+helm delete serverless-operators -n openshift-serverless
+helm delete service-mesh-operators -n openshift-operators-redhat
+helm delete cert-manager -n cert-manager
 ```
