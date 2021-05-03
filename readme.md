@@ -95,7 +95,7 @@ oc apply -f ./openshift/ai-ml-watermark.yaml
 ## Patch the service mesh for Kubeflow SSO
 
 ```shell
-export allowed_cidrs_csv=$(curl --no-progress-meter https://ip-ranges.amazonaws.com/ip-ranges.json | jq -r '.prefixes[] | select(.region=="us-east-2" or .region=="us-east-1" or .region=="us-west-1" or .region=="us-west-2") | select(.service=="S3" or .service=="AMAZON") | .ip_prefix' | awk -vORS=, '{print $1}' | sed 's/,$/\n/')
+export allowed_cidrs_csv=$(curl -s https://ip-ranges.amazonaws.com/ip-ranges.json | jq -r '.prefixes[] | select(.region=="us-east-2" or .region=="us-east-1" or .region=="us-west-1" or .region=="us-west-2") | select(.service=="S3" or .service=="AMAZON") | .ip_prefix' | awk -vORS=, '{print $1}' | sed 's/,$/\n/')
 export sm_cp_namespace=istio-system #change based on your settings
 export sm_cp_name=basic #change
 export kubeflow_namespace=kubeflow

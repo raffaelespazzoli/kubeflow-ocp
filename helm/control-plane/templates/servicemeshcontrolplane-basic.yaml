@@ -9,7 +9,10 @@ spec:
     networking:
       trafficControl:
         outbound:
-          excludedIPRanges: {{ printf "[%v]" .Values.control_plane.allowed_cidrs_csv | quote }}
+          excludedIPRanges: 
+            {{- with .Values.control_plane.excludedIPRanges }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
     injection:
       autoInject: true
       neverInjectSelector:
@@ -37,7 +40,7 @@ spec:
     additionalIngress:
       kubeflow:
         enabled: true
-        namepsace: {{ .Values.control_plane.ingress.kubeflow.namespace }}
+        #namespace: {{ .Values.control_plane.ingress.kubeflow.namespace }}
         volumes:
           - volume:
               secret: 

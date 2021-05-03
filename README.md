@@ -102,10 +102,109 @@ helm upgrade -i gatekeeper-metadata helm/gatekeeper-metadata -n gpu-operator-res
 ## Patch the service mesh for Kubeflow SSO
 
 ```shell
-export allowed_cidrs_csv=$(curl -s https://ip-ranges.amazonaws.com/ip-ranges.json | jq -r '.prefixes[] | select(.region=="us-east-2" or .region=="us-east-1" or .region=="us-west-1" or .region=="us-west-2") | select(.service=="S3" or .service=="AMAZON") | .ip_prefix' | awk -vORS=, '{print $1}' | sed 's/,$/\n/')
 export sm_cp_namespace=istio-system #change based on your settings
 export sm_cp_name=basic #change
 export kubeflow_namespace=kubeflow
 export base_domain=$(oc get dns cluster -o jsonpath='{.spec.baseDomain}')
-helm upgrade -i control-plane helm/control-plane -n istio-system --create-namespace --set control_plane.allowed_cidrs_csv=${allowed_cidrs_csv} --set control_plane.name=${sm_cp_namespace} --set control_plane.name=${sm_cp_name} --set control_plane.ingress.kubeflow.namespace=${kubeflow_namespace} --set base_domain=${base_domain}
+helm upgrade -i control-plane helm/control-plane -n istio-system --create-namespace --set control_plane.name=${sm_cp_namespace} --set control_plane.name=${sm_cp_name} --set control_plane.ingress.kubeflow.namespace=${kubeflow_namespace} --set base_domain=${base_domain}
+```
+
+## Create Knative Serving
+
+```sh
+helm upgrade -i serverless helm/serverless -n knative-serving
+```
+
+## Integrate ServiceMesh and Serverless
+
+```sh
+oc label namespace knative-serving serving.knative.openshift.io/system-namespace=true
+oc label namespace knative-serving-ingress serving.knative.openshift.io/system-namespace=true
+```
+
+## Enable AWS STS Integration
+
+This is needed only when running in AWS and allows to use workload related credentials (as opposed to individual related), with short lived tokens.
+
+Prepare OIDC endpoint
+
+```shell
+oc get -n openshift-kube-apiserver cm -o json bound-sa-token-signing-certs | jq -r '.data["service-account-001.pub"]' > /tmp/sa-signer-pkcs8.pub
+./openshift/bin/self-hosted-linux -key "/tmp/sa-signer-pkcs8.pub" | jq '.keys += [.keys[0]] | .keys[1].kid = ""' > "/tmp/keys.json"
+export cluster_name=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')
+export region=$(oc get infrastructure cluster -o jsonpath='{.status.platformStatus.aws.region}')
+export http_location=$(aws s3api create-bucket --bucket oidc-discovery-${cluster_name} --region ${region} --create-bucket-configuration LocationConstraint=${region} | jq -r .Location | sed 's:/*$::') 
+export oidc_hostname="${http_location#http://}" 
+export oidc_url=https://${oidc_hostname}
+envsubst < ./openshift/oidc.json > /tmp/discovery.json
+aws s3api put-object --bucket oidc-discovery-${cluster_name} --key keys.json --body /tmp/keys.json
+aws s3api put-object --bucket oidc-discovery-${cluster_name} --key '.well-known/openid-configuration' --body /tmp/discovery.json
+aws s3api put-object-acl --bucket oidc-discovery-${cluster_name} --key keys.json --acl public-read
+aws s3api put-object-acl --bucket oidc-discovery-${cluster_name} --key '.well-known/openid-configuration' --acl public-read
+oc patch authentication.config.openshift.io cluster --type "json" -p="[{\"op\": \"replace\", \"path\": \"/spec/serviceAccountIssuer\", \"value\":\"${oidc_url}\"}]"
+```
+
+Establish STS trust
+
+```shell
+export policy_arn=$(aws iam create-policy --policy-name AllowS3Access --policy-document file://./aws-sts/aws-s3-access-policy.json | jq -r .Policy.Arn)
+export thumbprint=$(openssl s_client -showcerts -servername ${oidc_hostname} -connect ${oidc_hostname}:443 </dev/null 2>/dev/null | openssl x509 -outform PEM | openssl x509 -fingerprint -noout)
+export thumbprint="${thumbprint##*=}"
+export thumbprint="${thumbprint//:}"
+export oidc_arn=$(aws iam create-open-id-connect-provider --url ${oidc_url} --client-id-list sts.amazonaws.com --thumbprint-list ${thumbprint} | jq -r .OpenIDConnectProviderArn)
+envsubst < ./aws-sts/aws-s3-access-trust-role-policy.json > /tmp/trust-policy.json
+export role_arn=$(aws iam create-role --role-name s3-access --assume-role-policy-document file:///tmp/trust-policy.json | jq -r .Role.Arn)
+aws iam attach-role-policy --role-name s3-access --policy-arn ${policy_arn}
+```
+
+Configure sts injection
+
+```shell
+export role_arn=$(aws iam get-role --role-name s3-access | jq -r .Role.Arn)
+envsubst < ./openshift/sts-injection.yaml | oc apply -f -
+```
+
+## Prepare the kubeflow namespace
+
+```shell
+export sm_cp_namespace=istio-system #change based on your settings
+export sm_cp_name=basic #change
+
+helm upgrade -i kubeflow helm/kubeflow -n kubeflow --create-namespace \
+  --set control_plane.namespace=${sm_cp_namespace} \
+  --set control_plane.name=${sm_cp_name}
+
+oc label namespace kubeflow istio-injection=enabled control-plane=kubeflow katib-metricscollector-injection=enabled --overwrite
+
+oc adm policy add-scc-to-user anyuid -z kubeflow-pipelines-cache-deployer-sa -n kubeflow
+oc adm policy add-scc-to-user anyuid -z xgboost-operator-service-account -n kubeflow
+```
+
+## (Optional) Regenerate the kustomize manifests within helm charts
+
+(Optional) - regenerate kustomize output in chart
+
+```sh
+kustomize --load-restrictor=LoadRestrictionsNone build ./kubeflow1.3 > helm/kubeflow/templates/kustomize-out.yaml
+```
+
+You then need to extract the CRDs from helm/kubeflow/templates/kustomize-out.yaml and put them into helm/kubeflow-crds/templates/crds.yaml
+
+Additionally, theres a ConfigMap that needs be modified to print correctly (not be interpreted by go templating) within helm/kubeflow/templates/kustomize-out.yaml...
+
+```yaml
+keyFormat: {{ printf "artifacts/{{workflow.name}}/{{pod.name}}" }}
+```
+
+## Deploy Kubeflow
+
+```shell
+export sm_cp_namespace=istio-system #change based on your settings
+export sm_cp_name=basic #change
+
+helm upgrade -i kubeflow-crds helm/kubeflow-crds -n kubeflow --create-namespace
+
+helm upgrade -i kubeflow helm/kubeflow -n kubeflow --create-namespace \
+  --set control_plane.namespace=${sm_cp_namespace} \
+  --set control_plane.name=${sm_cp_name}
 ```

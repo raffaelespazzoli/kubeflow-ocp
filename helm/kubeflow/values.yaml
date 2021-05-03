@@ -1,0 +1,3 @@
+control_plane:
+  namespace: istio-system
+  name: basic
