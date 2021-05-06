@@ -56,28 +56,6 @@ spec:
       subjects:
       - kind: ServiceAccount
         name: default        
-  # - objectTemplate: | 
-  #     apiVersion: redhatcop.redhat.io/v1alpha1
-  #     kind: ResourceLocker
-  #     metadata:
-  #       name: sts-annotation
-  #       namespace: {{ printf "{{ .Name }}" }}
-  #     spec:
-  #       serviceAccountRef:
-  #         name: default
-  #       patches:
-  #       - targetObjectRef:
-  #           apiVersion: v1
-  #           kind: ServiceAccount
-  #           name: default-editor
-  #           namespace: {{ printf "{{ .Name }}" }}
-  #         patchTemplate: |
-  #           metadata:
-  #             annotations:
-  #                eks.amazonaws.com/audience: "sts.amazonaws.com"
-  #                eks.amazonaws.com/token-expiration: "86400"
-  #         patchType: application/strategic-merge-patch+json
-  #         id: default-editor-aws-access
   - objectTemplate: |          
       apiVersion: v1
       kind: LimitRange

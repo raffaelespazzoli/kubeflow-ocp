@@ -1,9 +1,15 @@
+{{- if eq .Values.kubeflow.profile.from "namespace" }}
 apiVersion: redhatcop.redhat.io/v1alpha1
-kind: UserConfig
+kind: NamespaceConfig
 metadata:
-  name: kubeflow-user
+  name: kubeflow-profile
 spec:
-  providerName: my_htpasswd_provider
+  annotationSelector: 
+    matchExpressions:
+      - key: owner
+        operator: Exists
+        values: []
+  labelSelector: {}
   templates:
   - objectTemplate: |
       apiVersion: kubeflow.org/v1beta1
@@ -13,7 +19,7 @@ spec:
       spec:
         owner:
           kind: User
-          name: {{ printf "{{ .Name }}" }}
+          name: {{ printf "{{ (lookup \"v1\" \"Namespace\" \"\" .Name).metadata.annotations.owner }}" }}
         resourceQuotaSpec:
           hard:
             cpu: "8"
@@ -34,7 +40,7 @@ spec:
       subjects:
       - kind: User
         apiGroup: rbac.authorization.k8s.io
-        name: {{ printf "{{ .Name }}" }} 
+        name: {{ printf "{{ (lookup \"v1\" \"Namespace\" \"\" .Name).metadata.annotations.owner }}" }}
   - objectTemplate: | 
       apiVersion: rbac.authorization.k8s.io/v1
       kind: RoleBinding
@@ -48,4 +54,5 @@ spec:
       subjects:
       - kind: User
         apiGroup: rbac.authorization.k8s.io
-        name: {{ printf "{{ .Name }}" }}                
+        name: {{ printf "{{ (lookup \"v1\" \"Namespace\" \"\" .Name).metadata.annotations.owner }}" }}
+{{- end }}

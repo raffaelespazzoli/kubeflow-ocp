@@ -1,3 +1,6 @@
 control_plane:
   namespace: istio-system
   name: basic
+kubeflow:
+  profile:
+    from: user # set this value to "user" or "namespace"

@@ -192,7 +192,7 @@ kustomize --load-restrictor=LoadRestrictionsNone build ./kubeflow1.3 > helm/kube
 
 You then need to extract the CRDs from helm/kubeflow/templates/kustomize-out.yaml and put them into helm/kubeflow-crds/templates/crds.yaml so that we can install the CRDs first.
 
-Additionally, theres a ConfigMap that needs be modified to print correctly (not be interpreted by go templating) within helm/kubeflow/templates/kustomize-out.yaml...
+Additionally, theres a ConfigMap that needs be modified to print correctly (and not be interpreted by go templating) within helm/kubeflow/templates/kustomize-out.yaml...
 
 See <https://github.com/trevorbox/kubeflow-ocp/blob/helmify/helm/kubeflow/templates/kustomize-out.yaml#L5707>
 
@@ -211,14 +211,33 @@ helm upgrade -i kubeflow helm/kubeflow -n kubeflow --create-namespace \
 
 ## Configure automatic profile creation, and profile namespace configuration
 
-```shell
+Option 1: Create Kubeflow Profiles based on existing Users...
+
+```sh
 export sm_cp_namespace=istio-system #change based on your settings
 export sm_cp_name=basic #change
 
-helm upgrade -i kubeflow-profile helm/kubeflow-profile -n kubeflow
+helm upgrade -i kubeflow-profile helm/kubeflow-profile -n kubeflow --set kubeflow.profile.from="user"
+```
 
-envsubst < ./openshift/kubeflow-profile-creation.yaml | oc apply -f -
-envsubst < ./openshift/kubeflow-profile-namespace-config.yaml | oc apply -f -
+Option 2: Create Kubeflow Profiles based on existing Namespaces...
+
+> Note: Namespaces must be created by a separate process with an annoation of key `owner` and value that matches the User name.
+>
+> ```yaml
+> kind: Namespace
+> apiVersion: v1
+> metadata:
+>   name: my-kubeflow-enabled-namespace
+>   annotations:
+>     owner: username # This needs to match the User name
+> ```
+
+```sh
+export sm_cp_namespace=istio-system #change based on your settings
+export sm_cp_name=basic #change
+
+helm upgrade -i kubeflow-profile helm/kubeflow-profile -n kubeflow --set kubeflow.profile.from="namespace"
 ```
 
 ## Test the kubeflow dashboard
