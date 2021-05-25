@@ -37,6 +37,7 @@ This approach also assumes that the data lake is on AWS S3 and sets up transpare
 | gpu nodes: autoscaling | done - need to closely observe the autoscaler behavior |
 | gpu nodes: proactive autoscaling | done |
 | transparent data lake access: AWS STS Integration | done |
+| kubeflow pipelines | done |
 
 ## Enable GPUs and node autoscaling
 
@@ -226,6 +227,15 @@ docker push quay.io/raffaelespazzoli/pytorch-dist-mnist_test:1.0 quay.io/raffael
 export namespace=raffa
 oc apply -f ./training/pyjob/pyjob-distributed-training.yaml -n ${namespace}
 ```
+
+## Kubeflow pipelines
+
+Kubeflow pipelines work in OpenShift with the [k8sapi](https://argoproj.github.io/argo-workflows/workflow-executors/#kubernetes-api-k8sapi) executor.
+In order for it to work, steps that have output must write it to an emptyDir volume, as explained [here] (https://argoproj.github.io/argo-workflows/empty-dir/)
+
+The out of the box example don't follow this pattern and will not work.
+
+upload this file ./pipeline/control-structures.yaml into a new kubeflow pipeline from the dashboard to test a pipeline.
 
 ## remove kubeflow
 

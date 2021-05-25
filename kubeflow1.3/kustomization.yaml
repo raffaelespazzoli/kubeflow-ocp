@@ -73,3 +73,10 @@ patches:
       kind: ConfigMap
       name: inferenceservice-config
       namespace: kubeflow
+  - path: ./kubeflow-pipeline-config-patch.yaml
+    target:
+      group: ""
+      version: v1
+      kind: ConfigMap
+      name: inferenceservice-config
+      namespace: kubeflow      
