@@ -1,0 +1,74 @@
+{{- range .Values.machinesets.gpus }}
+---
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  labels:
+    machine.openshift.io/cluster-api-cluster: {{ $.Values.machinesets.infrastructure_id }}
+  name: {{ printf "%v-%v-%v" $.Values.machinesets.infrastructure_id .name .zone }}
+  namespace: openshift-machine-api
+spec:
+  replicas: {{ .replicas }}
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: {{ $.Values.machinesets.infrastructure_id }}
+      machine.openshift.io/cluster-api-machineset: {{ printf "%v-%v-%v" $.Values.machinesets.infrastructure_id .name .zone }}
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: {{ $.Values.machinesets.infrastructure_id }}
+        machine.openshift.io/cluster-api-machine-role: gpu
+        machine.openshift.io/cluster-api-machine-type: {{ .name }}
+        machine.openshift.io/cluster-api-machineset: {{ printf "%v-%v-%v" $.Values.machinesets.infrastructure_id .name .zone }}
+    spec:
+      metadata: 
+        labels:
+          workload: {{ .label }}
+          node-role.kubernetes.io/{{ .label }}: ''
+          cluster-api/accelerator: "true"
+      taints:
+        - key: workload
+          value: {{ .label }}
+          effect: NoSchedule
+      providerSpec:
+        value:
+          ami:
+            id: {{ $.Values.machinesets.ami_id }}
+          apiVersion: awsproviderconfig.openshift.io/v1beta1
+          blockDevices:
+          - ebs:
+              encrypted: true
+              iops: 2000
+              kmsKey:
+                arn: ""
+              volumeSize: 100
+              volumeType: io1
+          credentialsSecret:
+            name: aws-cloud-credentials
+          deviceIndex: 0
+          iamInstanceProfile:
+            id: {{ $.Values.machinesets.infrastructure_id }}-worker-profile
+          instanceType: {{ .instanceType }}
+          kind: AWSMachineProviderConfig
+          metadata:
+            creationTimestamp: null
+          placement:
+            availabilityZone: {{ .zone }}
+            region: {{ .region }}
+          securityGroups:
+          - filters:
+            - name: tag:Name
+              values:
+              - {{ $.Values.machinesets.infrastructure_id }}-worker-sg
+          subnet:
+            filters:
+            - name: tag:Name
+              values:
+              - {{ printf "%v-private-%v" $.Values.machinesets.infrastructure_id .zone }}
+          tags:
+          - name: {{ printf "kubernetes.io/cluster/%v" $.Values.machinesets.infrastructure_id }}
+            value: owned
+          userDataSecret:
+            name: worker-user-data
+...
+{{- end }}

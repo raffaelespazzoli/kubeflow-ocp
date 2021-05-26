@@ -1,0 +1,31 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: x-forwarded-user-to-kubeflow-userid
+  namespace: {{ .Values.control_plane.namespace }}
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+      maistra.io/gateway: kubeflow.istio-system
+  configPatches:
+  - applyTo: HTTP_FILTER # http connection manager is a filter in Envoy
+    match:
+      context: GATEWAY
+    patch:
+      operation: INSERT_BEFORE
+      value: # lua filter specification
+       name: envoy.lua
+       typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+          inlineCode: |
+            function envoy_on_request(request_handle)
+              headers = request_handle:headers()
+              request_handle:headers():add("kubeflow-userid", headers:get("x-forwarded-user"))
+              --[[
+              userid = headers:get("x-forwarded-user")
+              if (not userid == '') then
+                request_handle:headers():add("kubeflow-userid", userid)
+              end 
+              --]]          
+            end

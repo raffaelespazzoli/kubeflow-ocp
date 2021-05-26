@@ -1,0 +1,26 @@
+apiVersion: operator.gatekeeper.sh/v1alpha1
+kind: Gatekeeper
+metadata:
+  name: gatekeeper
+spec:
+  validatingWebhook: Disabled
+  mutatingWebhook: Enabled
+  webhook:
+    logLevel: INFO
+    replicas: 1
+    emitAdmissionEvents: Enabled
+    failurePolicy: Ignore
+    namespaceSelector:
+      matchExpressions:
+      - key: maistra.io/member-of
+        operator: Exists
+      - key: istio-injection
+        operator: In
+        values:
+        - enabled 
+  image:
+    image: >-
+      registry.redhat.io/rhacm2/gatekeeper-rhel8@sha256:63bd1bbb6f825fc45f2c7dc71f5f2bf118621a6b5dad8de4ad4e50eb5c720118
+  audit:
+    logLevel: INFO
+    replicas: 1

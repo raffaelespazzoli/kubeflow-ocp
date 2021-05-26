@@ -1,0 +1,18 @@
+{{- range .Values.machinesets.gpus }}
+{{- if .machineAutoscaler.enabled }}
+---
+apiVersion: autoscaling.openshift.io/v1beta1
+kind: MachineAutoscaler
+metadata:
+  name: {{ printf "%v-%v-%v" $.Values.machinesets.infrastructure_id .name .zone }}
+  namespace: openshift-machine-api
+spec:
+  minReplicas: {{ .machineAutoscaler.minReplicas }}
+  maxReplicas: {{ .machineAutoscaler.maxReplicas }}
+  scaleTargetRef: 
+    apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    name: {{ printf "%v-%v-%v" $.Values.machinesets.infrastructure_id .name .zone }}
+...
+{{- end }}
+{{- end }}

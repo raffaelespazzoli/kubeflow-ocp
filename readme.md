@@ -1,5 +1,7 @@
 # Kubeflow for OpenShift
 
+> For installation using Helm, follow [README-helm-install.md](./README-helm-install.md)
+
 This guides helps you set up Kubeflow 1.3 in an existing environment.
 We assume that that the following operators are installed:
 
@@ -96,12 +98,18 @@ oc apply -f ./openshift/ai-ml-watermark.yaml
 ## Patch the service mesh for Kubeflow SSO
 
 ```shell
-export allowed_cidrs_csv=$(curl --no-progress-meter https://ip-ranges.amazonaws.com/ip-ranges.json | jq -r '.prefixes[] | select(.region=="us-east-2" or .region=="us-east-1" or .region=="us-west-1" or .region=="us-west-2") | select(.service=="S3" or .service=="AMAZON") | .ip_prefix' | awk -vORS=, '{print $1}' | sed 's/,$/\n/')
+export allowed_cidrs_csv=$(curl -s https://ip-ranges.amazonaws.com/ip-ranges.json | jq -r '.prefixes[] | select(.region=="us-east-2" or .region=="us-east-1" or .region=="us-west-1" or .region=="us-west-2") | select(.service=="S3" or .service=="AMAZON") | .ip_prefix' | awk -vORS=, '{print $1}' | sed 's/,$/\n/')
 export sm_cp_namespace=istio-system #change based on your settings
 export sm_cp_name=basic #change
 export kubeflow_namespace=kubeflow
 export base_domain=$(oc get dns cluster -o jsonpath='{.spec.baseDomain}')
 envsubst < ./openshift/sm_cp_patch.yaml | oc apply -f -
+```
+
+## Enable Knative Serving
+
+```sh
+oc apply -f openshift/knativeserving-knative-serving.yaml -n knative-serving
 ```
 
 ## Integrate ServiceMesh and Serverless
@@ -167,6 +175,8 @@ oc adm policy add-scc-to-user anyuid -z xgboost-operator-service-account -n kube
 ```
 
 deploy kubeflow
+
+> Note: You may need to run this command twice since the CRDs need to exist first.
 
 ```shell
 ./kustomize --load-restrictor=LoadRestrictionsNone build ./kubeflow1.3 | oc apply -f -
